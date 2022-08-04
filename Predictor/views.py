@@ -7,6 +7,15 @@ import json
 
 # Create your views here.
 
+class HomeAPI(APIView):
+    def get(self, request):
+        symbols = {
+            "AAL":"AAL",
+            "GGL.L":"GGL.L",
+            "LON:RR":"LON:RR",
+        }
+        return Response(data=symbols, status=status.HTTP_200_OK)
+
 class PredictionAPI(APIView):
 
     def get(self,request):

@@ -15,10 +15,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from Predictor.views import PredictionAPI, ModelBuild
+from Predictor.views import PredictionAPI, ModelBuild, HomeAPI
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('',HomeAPI.as_view()),
     path('predict/',PredictionAPI.as_view()),
     path('build_model/',ModelBuild.as_view()),
 ]

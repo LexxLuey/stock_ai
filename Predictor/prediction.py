@@ -4,7 +4,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from nsepy import get_history
-from datetime import date
 import tensorflow as tf
 from django.conf import settings
 from tensorflow import keras
@@ -13,21 +12,74 @@ import pickle
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from sklearn.metrics import mean_squared_error,accuracy_score
+import os
+import urllib.request
+import json
+import datetime as dt
+
 
 def predict(name):
+    if "_" in name:
+        name = name.replace("_", " ")
+
     print("Request Recieved for {}".format(name))
-    today = date.today()
+    """
+    txt = "NIFTY_50"
+
+    """
+    today = dt.date.today()
     try:
-        data = get_history(symbol= name, start=date(today.year - 10,today.month, today.day ), end= today)
+        # data = get_history(symbol= name, start=date(today.year - 1,today.month, today.day ), end= today)
+        api_key = "VYKNL7H7WAZG4XAW"
+
+        # American Airlines stock market prices
+        ticker = name
+
+        # JSON file with all the stock market data for AAL from the last 20 years
+        url_string = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&outputsize=full&apikey={api_key}"
+
+        # Save data to this file
+        # if "." in name:
+        #     name = name.replace(".", "_")
+        file_to_save = f'stock_market_data-{ticker}.csv'
+
+        # If you haven't already saved data,
+        # Go ahead and grab the data from the url
+        # And store date, low, high, volume, close, open values to a Pandas DataFrame
+        if not os.path.exists(file_to_save):
+            with urllib.request.urlopen(url_string) as url:
+                data = json.loads(url.read().decode())
+                # extract stock market data
+                data = data['Time Series (Daily)']
+                df = pd.DataFrame(
+                    columns=['Date', 'Low', 'High', 'Close', 'Open'])
+                for k, v in data.items():
+                    date = dt.datetime.strptime(k, '%Y-%m-%d')
+                    data_row = [date.date(), float(v['3. low']), float(v['2. high']),
+                                float(v['4. close']), float(v['1. open'])]
+                    df.loc[-1, :] = data_row
+                    df.index = df.index + 1
+            
+            print('Data saved to : %s' % file_to_save)
+            df.to_csv(file_to_save)
+            df = pd.read_csv(file_to_save, usecols = ['Close'], low_memory = True)
+
+        # If the data is already there, just load it from the CSV
+        else:
+            print('File already exists. Loading data from CSV')
+            df = pd.read_csv(file_to_save, usecols = ['Close'], low_memory = True)
+
     except socket.gaierror:
         return "Invalid Stock Ticker or Connection Error"
     #data[['Close']].plot()
 
-    data = data.filter(['Open','Close','High','Low'])
+    data = df.filter(['Open','Close','High','Low'])
 
-    data = data.filter(['Close'])
+    data = df.filter(['Close'])
 
-    data = pd.DataFrame(data = data)
+    data = pd.DataFrame(data = df)
+
+    print(f" data = {data} ")
 
     print(data.isna().any())
 
@@ -70,6 +122,9 @@ def predict(name):
 
     predictions = model.predict(x_test)
     print(f"predictions = {predictions} ")
+    # p = scaler.inverse_transform(predictions)
+    # print(f" popopo = {p} ")
+
     n_data = [data[len(data)+1 - 61:len(data+1),0]]
 
     n_data = np.array(n_data)
@@ -79,6 +134,7 @@ def predict(name):
     n_data = np.reshape(n_data,(n_data.shape[0], n_data.shape[1], 1))
 
     predi = model.predict(n_data)
+    print(f" predi = {predi} ")
 
     predi_result = scaler.inverse_transform(predi)
 
